@@ -1,0 +1,3 @@
+Problem : People can't find places they are interested when they are in a strange city(ex:- Low price coffee shop, best places to visit in the city, etc.)
+
+Solution : I want to create an android application to search nearby suggestions with user's interests and display it in a Google map with user's location. It will also helps users to filter suggestions. For this I can can use foursquare and Google Maps APIs. By this app user can choose the best location by reviewing other foursquare user's ratings for locations.
