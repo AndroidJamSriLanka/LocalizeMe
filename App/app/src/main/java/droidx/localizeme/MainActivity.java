@@ -2,6 +2,8 @@ package droidx.localizeme;
 
 import android.app.Activity;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
@@ -25,6 +27,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.support.v4.widget.DrawerLayout;
 import android.widget.ArrayAdapter;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -64,18 +67,20 @@ public class MainActivity extends ActionBarActivity
      */
     private CharSequence mTitle;
     HttpAsyncTask task;
-
+    static String result="";
 
     LocationManager locationManager;
     LocationListener locationListener;
-    static Location location;
+    static LatLng location;
     SharedPreferences sharedPreferences;
+    String mode="ex";
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         sharedPreferences=getSharedPreferences("info",MODE_PRIVATE);
-
+        result=sharedPreferences.getString("result", "");
+        location=new LatLng(sharedPreferences.getFloat("lat",0),sharedPreferences.getFloat("lon",0));
         mNavigationDrawerFragment = (NavigationDrawerFragment)
                 getSupportFragmentManager().findFragmentById(R.id.navigation_drawer);
         mTitle = getTitle();
@@ -90,31 +95,62 @@ public class MainActivity extends ActionBarActivity
         setLocationUpdatesEnable();
         CameraPosition cameraPosition=new CameraPosition.Builder()
                 .target(new LatLng(sharedPreferences.getFloat("lat",0),sharedPreferences.getFloat("lon",0)))
-                .zoom(10)
+                .zoom(12)
                 .build();
         mMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
         setMarkers();
     }
 
-    private void setMarkers() {
-
-        try {
-            JSONObject json =new JSONObject(sharedPreferences.getString("result",""));
-            JSONArray locations =json.getJSONObject("response").getJSONArray("venues");
-            int i=0;
-            while(true){
-                mMap.addMarker(new MarkerOptions()
-                        .title(locations.getJSONObject(i).getString("name"))
-                        .position(new LatLng(locations.getJSONObject(i).getJSONObject("location").getDouble("lat"),locations.getJSONObject(i).getJSONObject("location").getDouble("lng"))))
-                        ;
-
-                i++;
-            }
-        } catch (JSONException e) {
-            Toast.makeText(MainActivity.this,"Loaded All data",Toast.LENGTH_LONG).show();
-        }
+    public void reInitTask(){
+        task=new HttpAsyncTask();
     }
 
+    private void setMarkers() {
+/*
+
+*/
+
+        if(mode.equals("ex")){
+            try {
+                JSONObject json =new JSONObject(result);
+                JSONArray items =json.getJSONObject("response").getJSONArray("groups").getJSONObject(0).getJSONArray("items");
+                int i=0;
+                while(true){
+                    mMap.addMarker(new MarkerOptions()
+                            .title(items.getJSONObject(i).getJSONObject("venue").getString("name"))
+                            .position(new LatLng(items.getJSONObject(i).getJSONObject("venue").getJSONObject("location").getDouble("lat"),
+                                    items.getJSONObject(i).getJSONObject("venue").getJSONObject("location").getDouble("lng"))))
+                    ;
+
+                    i++;
+                }
+            } catch (JSONException e) {
+                Toast.makeText(MainActivity.this,"Loaded All data",Toast.LENGTH_LONG).show();
+            }
+        }else if(mode.equals("search")){
+            try {
+                JSONObject json =new JSONObject(result);
+                JSONArray locations =json.getJSONObject("response").getJSONArray("venues");
+                int i=0;
+                while(true){
+                    mMap.addMarker(new MarkerOptions()
+                            .title(locations.getJSONObject(i).getString("name"))
+                            .position(new LatLng(locations.getJSONObject(i).getJSONObject("location").getDouble("lat"), locations.getJSONObject(i).getJSONObject("location").getDouble("lng"))))
+                    ;
+
+                    i++;
+                }
+            } catch (JSONException e) {
+                Toast.makeText(MainActivity.this,"Loaded All data",Toast.LENGTH_LONG).show();
+            }
+        }
+
+    }
+
+    public void reInitMap(){
+        mMap.clear();
+        setMarkers();
+    }
     @Override
     protected void onResume() {
         super.onResume();
@@ -127,16 +163,16 @@ public class MainActivity extends ActionBarActivity
         locationListener=new LocationListener() {
             @Override
             public void onLocationChanged(Location location) {
-                MainActivity.location=location;
-                Toast.makeText(getBaseContext(),location.getLatitude()+" "+location.getLongitude(),Toast.LENGTH_SHORT).show();
+                MainActivity.location=new LatLng(location.getLatitude(),location.getLongitude());
+                //Toast.makeText(getBaseContext(),location.getLatitude()+" "+location.getLongitude(),Toast.LENGTH_SHORT).show();
                 //mMap.addMarker(new MarkerOptions().title("current").position(new LatLng(location.getLatitude(),location.getLongitude())));
                 //setLocationUpdatesDisable();
-                //task.execute("https://api.foursquare.com/v2/venues/search?client_id=4L3ZXW3XZRAWZHCS30I3J20VKAVCD3DQZCITNE2BL1RECQCD&client_secret=5EPRSZX5TNW50FQVZ2FBQVS5YSZKIC5KQBYOUU0VJOCNRRND&v=20130815&ll="+location.getLatitude()+","+location.getLongitude());
                 CameraPosition cameraPosition=new CameraPosition.Builder()
                         .target(new LatLng(location.getLatitude(),location.getLongitude()))
-                        .zoom(10)
+                        .zoom(12)
                         .build();
                 mMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+
             }
 
             @Override
@@ -191,12 +227,63 @@ public class MainActivity extends ActionBarActivity
         switch (number) {
             case 1:
                 mTitle = getString(R.string.title_section1);
+                reInitTask();
+                mode="ex";
+                task.execute("https://api.foursquare.com/v2/venues/explore?client_id=4L3ZXW3XZRAWZHCS30I3J20VKAVCD3DQZCITNE2BL1RECQCD&client_secret=5EPRSZX5TNW50FQVZ2FBQVS5YSZKIC5KQBYOUU0VJOCNRRND&v=20130815&ll="+MainActivity.location.latitude+","+MainActivity.location.longitude+"&limit=20");
                 break;
             case 2:
                 mTitle = getString(R.string.title_section2);
+                reInitTask();
+                mode="ex";
+                task.execute("https://api.foursquare.com/v2/venues/explore?section=specials&client_id=4L3ZXW3XZRAWZHCS30I3J20VKAVCD3DQZCITNE2BL1RECQCD&client_secret=5EPRSZX5TNW50FQVZ2FBQVS5YSZKIC5KQBYOUU0VJOCNRRND&v=20130815&ll="+MainActivity.location.latitude+","+MainActivity.location.longitude);
                 break;
             case 3:
                 mTitle = getString(R.string.title_section3);
+                reInitTask();
+                mode="ex";
+                task.execute("https://api.foursquare.com/v2/venues/explore?section=trending&client_id=4L3ZXW3XZRAWZHCS30I3J20VKAVCD3DQZCITNE2BL1RECQCD&client_secret=5EPRSZX5TNW50FQVZ2FBQVS5YSZKIC5KQBYOUU0VJOCNRRND&v=20130815&ll="+MainActivity.location.latitude+","+MainActivity.location.longitude);
+                break;
+            case 4:
+                mTitle = getString(R.string.title_section4);
+                reInitTask();
+                mode="ex";
+                task.execute("https://api.foursquare.com/v2/venues/explore?section=food&client_id=4L3ZXW3XZRAWZHCS30I3J20VKAVCD3DQZCITNE2BL1RECQCD&client_secret=5EPRSZX5TNW50FQVZ2FBQVS5YSZKIC5KQBYOUU0VJOCNRRND&v=20130815&ll="+MainActivity.location.latitude+","+MainActivity.location.longitude);
+                break;
+            case 5:
+                mTitle = getString(R.string.title_section5);
+                reInitTask();
+                mode="ex";
+                task.execute("https://api.foursquare.com/v2/venues/explore?section=drinks&client_id=4L3ZXW3XZRAWZHCS30I3J20VKAVCD3DQZCITNE2BL1RECQCD&client_secret=5EPRSZX5TNW50FQVZ2FBQVS5YSZKIC5KQBYOUU0VJOCNRRND&v=20130815&ll="+MainActivity.location.latitude+","+MainActivity.location.longitude);
+                break;
+            case 6:
+                mTitle = getString(R.string.title_section6);
+                reInitTask();
+                mode="ex";
+                task.execute("https://api.foursquare.com/v2/venues/explore?section=coffee&client_id=4L3ZXW3XZRAWZHCS30I3J20VKAVCD3DQZCITNE2BL1RECQCD&client_secret=5EPRSZX5TNW50FQVZ2FBQVS5YSZKIC5KQBYOUU0VJOCNRRND&v=20130815&ll="+MainActivity.location.latitude+","+MainActivity.location.longitude);
+                break;
+            case 7:
+                mTitle = getString(R.string.title_section7);
+                reInitTask();
+                mode="ex";
+                task.execute("https://api.foursquare.com/v2/venues/explore?section=shops&client_id=4L3ZXW3XZRAWZHCS30I3J20VKAVCD3DQZCITNE2BL1RECQCD&client_secret=5EPRSZX5TNW50FQVZ2FBQVS5YSZKIC5KQBYOUU0VJOCNRRND&v=20130815&ll="+MainActivity.location.latitude+","+MainActivity.location.longitude);
+                break;
+            case 8:
+                mTitle = getString(R.string.title_section8);
+                reInitTask();
+                mode="ex";
+                task.execute("https://api.foursquare.com/v2/venues/explore?section=arts&client_id=4L3ZXW3XZRAWZHCS30I3J20VKAVCD3DQZCITNE2BL1RECQCD&client_secret=5EPRSZX5TNW50FQVZ2FBQVS5YSZKIC5KQBYOUU0VJOCNRRND&v=20130815&ll="+MainActivity.location.latitude+","+MainActivity.location.longitude);
+                break;
+            case 9:
+                mTitle = getString(R.string.title_section9);
+                reInitTask();
+                mode="ex";
+                task.execute("https://api.foursquare.com/v2/venues/explore?section=outdoors&client_id=4L3ZXW3XZRAWZHCS30I3J20VKAVCD3DQZCITNE2BL1RECQCD&client_secret=5EPRSZX5TNW50FQVZ2FBQVS5YSZKIC5KQBYOUU0VJOCNRRND&v=20130815&ll="+MainActivity.location.latitude+","+MainActivity.location.longitude);
+                break;
+            case 10:
+                mTitle = getString(R.string.title_section10);
+                reInitTask();
+                mode="ex";
+                task.execute("https://api.foursquare.com/v2/venues/explore?section=sights&client_id=4L3ZXW3XZRAWZHCS30I3J20VKAVCD3DQZCITNE2BL1RECQCD&client_secret=5EPRSZX5TNW50FQVZ2FBQVS5YSZKIC5KQBYOUU0VJOCNRRND&v=20130815&ll="+MainActivity.location.latitude+","+MainActivity.location.longitude);
                 break;
         }
     }
@@ -340,26 +427,64 @@ public class MainActivity extends ActionBarActivity
             //Toast.makeText(getBaseContext(), "Received!", Toast.LENGTH_LONG).show();
             //etResponse.setText(result);
             //Toast.makeText(getBaseContext(),result,Toast.LENGTH_LONG).show();
+            MainActivity.result=result;
+            reInitMap();
         }
     }
 }
 
 class Venue{
-    private String name, contact,address,shortCatName;
+    private String id, name, contact,address,shortCatName;
     private int distance;
+    private float rating;
     private  LatLng latLng;
-    public Venue(String name,int distance,LatLng latLng,String contact,String address,String shortCatName){
-        this.name=name;
-        this.distance=distance;
-        this.latLng=latLng;
-        this.contact=contact;
-        this.address=address;
-        this.shortCatName=shortCatName;
-    }
+
+    public String getId(){return id;}
     public String getName(){return name;}
     public int getDistance(){return distance;}
     public LatLng getLatLng(){return latLng;}
     public String getContact(){return contact;}
     public String getAddress(){return address;}
     public String getShortCatName(){return shortCatName;}
+    public float getRating(){return rating;}
+
+    public Venue setId(String id){this.id=id; return this;}
+    public Venue setName(String name){this.name=name; return this;}
+    public Venue setDistance(int distance){this.distance=distance; return this;}
+    public Venue setLatLng(LatLng latLng){this.latLng=latLng; return this;}
+    public Venue setContact(String contact){this.contact=contact; return this;}
+    public Venue setAddress(String address){this.address=address; return this;}
+    public Venue setShortCatName(String shortCatName){this.shortCatName=shortCatName; return this;}
+    public Venue setRating(float rating){this.rating=rating; return this;}
+
+}
+
+new DownloadImageTask((ImageView) findViewById(R.id.imageView1))
+        .execute("http://java.sogeti.nl/JavaBlog/wp-content/uploads/2009/04/android_icon_256.png");
+        }
+
+
+class DownloadImageTask extends AsyncTask<String, Void, Bitmap> {
+    ImageView bmImage;
+
+    public DownloadImageTask(ImageView bmImage) {
+        this.bmImage = bmImage;
+    }
+
+    protected Bitmap doInBackground(String... urls) {
+        String urldisplay = urls[0];
+        Bitmap mIcon11 = null;
+        try {
+            InputStream in = new java.net.URL(urldisplay).openStream();
+            mIcon11 = BitmapFactory.decodeStream(in);
+        } catch (Exception e) {
+            Log.e("Error", e.getMessage());
+            e.printStackTrace();
+        }
+        return mIcon11;
+    }
+
+    protected void onPostExecute(Bitmap result) {
+        bmImage.setImageBitmap(result);
+    }
 }

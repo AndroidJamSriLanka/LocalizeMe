@@ -42,19 +42,17 @@ public class SplashActivity extends Activity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_splash);
         sharedPreferences=getSharedPreferences("info",MODE_PRIVATE);
-        task=new HttpAsyncTask();
         locationManager= (LocationManager) this.getSystemService(Context.LOCATION_SERVICE);
         locationListener=new LocationListener() {
             @Override
             public void onLocationChanged(Location location) {
                 SplashActivity.location=location;
-                Toast.makeText(getBaseContext(), location.getLatitude() + " " + location.getLongitude(), Toast.LENGTH_SHORT).show();
+                //Toast.makeText(getBaseContext(), location.getLatitude() + " " + location.getLongitude(), Toast.LENGTH_SHORT).show();
                 //mMap.addMarker(new MarkerOptions().title("current").position(new LatLng(location.getLatitude(),location.getLongitude())));
                 //setLocationUpdatesDisable();
-                task.execute("https://api.foursquare.com/v2/venues/search?client_id=4L3ZXW3XZRAWZHCS30I3J20VKAVCD3DQZCITNE2BL1RECQCD&client_secret=5EPRSZX5TNW50FQVZ2FBQVS5YSZKIC5KQBYOUU0VJOCNRRND&v=20130815&ll="+location.getLatitude()+","+location.getLongitude());
-                locationManager.removeUpdates(locationListener);
-                locationManager=null;
-                locationListener=null;
+                task=new HttpAsyncTask();
+                task.execute("https://api.foursquare.com/v2/venues/explore?client_id=4L3ZXW3XZRAWZHCS30I3J20VKAVCD3DQZCITNE2BL1RECQCD&client_secret=5EPRSZX5TNW50FQVZ2FBQVS5YSZKIC5KQBYOUU0VJOCNRRND&v=20130815&ll="+location.getLatitude()+","+location.getLongitude()+"&limit=20");
+
             }
 
             @Override
@@ -72,6 +70,7 @@ public class SplashActivity extends Activity {
 
             }
         };
+        locationManager.requestLocationUpdates(LocationManager.NETWORK_PROVIDER,2000,500,locationListener);
         locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER,2000,500,locationListener);
     }
 
@@ -134,11 +133,9 @@ public class SplashActivity extends Activity {
         protected void onPostExecute(String result) {
             //Toast.makeText(getBaseContext(), "Received!", Toast.LENGTH_LONG).show();
             //etResponse.setText(result);
-            Toast.makeText(SplashActivity.this,result,Toast.LENGTH_LONG).show();
+            //Toast.makeText(SplashActivity.this,"still running",Toast.LENGTH_LONG).show();
             if(result.equals("")){
-                task=new HttpAsyncTask();
-                task.execute("https://api.foursquare.com/v2/venues/search?client_id=4L3ZXW3XZRAWZHCS30I3J20VKAVCD3DQZCITNE2BL1RECQCD&client_secret=5EPRSZX5TNW50FQVZ2FBQVS5YSZKIC5KQBYOUU0VJOCNRRND&v=20130815&ll="+location.getLatitude()+","+location.getLongitude());
-                Toast.makeText(SplashActivity.this,"Retrying... Please turn on your internet source",Toast.LENGTH_SHORT).show();
+                Toast.makeText(SplashActivity.this,"Retrying... Please turn on your internet source "+Toast.LENGTH_SHORT,Toast.LENGTH_SHORT).show();
             }else{
                 //Toast.makeText(SplashActivity.this,result,Toast.LENGTH_LONG).show();
                 Intent intent=new Intent(SplashActivity.this,MainActivity.class);
@@ -149,8 +146,11 @@ public class SplashActivity extends Activity {
                 editor.putString("result", result);
                 editor.commit();
                 startActivity(intent);
-                
+
                 task=null;
+                locationManager.removeUpdates(locationListener);
+                locationManager=null;
+                locationListener=null;
                 finish();
             }
         }
