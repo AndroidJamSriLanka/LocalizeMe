@@ -458,11 +458,11 @@ class Venue{
     public Venue setRating(float rating){this.rating=rating; return this;}
 
 }
-
+/*
 new DownloadImageTask((ImageView) findViewById(R.id.imageView1))
         .execute("http://java.sogeti.nl/JavaBlog/wp-content/uploads/2009/04/android_icon_256.png");
         }
-
+*/
 
 class DownloadImageTask extends AsyncTask<String, Void, Bitmap> {
     ImageView bmImage;
